@@ -1,0 +1,6 @@
+server/target
+server/downloads
+server/config
+
+front/dist
+front/node_modules
