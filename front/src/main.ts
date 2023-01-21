@@ -10,6 +10,7 @@ const table = document.getElementById('table') as HTMLTableElement;
 downloadButton.onclick = () => {
     const req = new XMLHttpRequest();
     req.open('POST', API_URL + '/download');
+    req.setRequestHeader("Content-Type", "application/json");
     const data: DownloadQuery = { download_url: urlInput.value.trim() };
     req.onload = () => {
         downloadResult.style.display = 'inline-block';

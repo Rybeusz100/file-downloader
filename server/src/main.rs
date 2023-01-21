@@ -1,26 +1,16 @@
-#[macro_use]
-extern crate rocket;
-use cors::Cors;
-use rocket::{
-    fs::NamedFile,
-    serde::{json::Json, Deserialize, Serialize},
-    tokio, State,
-};
+use actix_cors::Cors;
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use serde::{Deserialize, Serialize};
 use sqlite::Connection;
-use std::{
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use url::check_url;
 
-mod cors;
 mod url;
 mod wetransfer;
 
 #[derive(Deserialize, Debug)]
-#[serde(crate = "rocket::serde")]
-struct DownloadQuery<'r> {
-    download_url: &'r str,
+struct DownloadQuery {
+    download_url: String,
 }
 
 struct ServerState {
@@ -41,18 +31,11 @@ struct DbRow {
 #[derive(Serialize)]
 struct DbSelectResult(Vec<DbRow>);
 
-#[get("/")]
-async fn index() -> Option<NamedFile> {
-    NamedFile::open(Path::new("./front/index.html")).await.ok()
-}
-
-#[get("/<file..>")]
-async fn file(file: PathBuf) -> Option<NamedFile> {
-    NamedFile::open(Path::new("./front/").join(file)).await.ok()
-}
-
-#[post("/download", data = "<input>")]
-async fn download(state: &State<ServerState>, input: Json<DownloadQuery<'_>>) -> &'static str {
+#[post("/download")]
+async fn download(
+    state: web::Data<ServerState>,
+    input: web::Json<DownloadQuery>,
+) -> impl Responder {
     let url = input.download_url.to_owned();
     let _url_type = match check_url(&url) {
         Some(u) => u,
@@ -115,7 +98,7 @@ async fn download(state: &State<ServerState>, input: Json<DownloadQuery<'_>>) ->
 }
 
 #[get("/data")]
-fn get_data(state: &State<ServerState>) -> String {
+async fn get_data(state: web::Data<ServerState>) -> impl Responder {
     let conn = state.db_conn.lock().unwrap();
     let query = "SELECT * FROM downloads";
     let mut result = DbSelectResult(Vec::new());
@@ -146,29 +129,55 @@ fn get_data(state: &State<ServerState>) -> String {
     })
     .unwrap();
 
-    serde_json::to_string(&result).unwrap()
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(serde_json::to_string(&result).unwrap())
 }
 
-#[launch]
-async fn rocket() -> _ {
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    #[cfg(debug_assertions)]
+    std::env::set_var("RUST_LOG", "debug");
+    #[cfg(not(debug_assertions))]
+    std::env::set_var("RUST_LOG", "warn");
+
+    pretty_env_logger::init();
+
+    #[cfg(debug_assertions)]
+    let files_dir = "../front/dist/";
+    #[cfg(not(debug_assertions))]
+    let files_dir = "./front/";
+
     let db_conn = Arc::new(Mutex::new(
         sqlite::open("./config/file-downloader.db").unwrap(),
     ));
-    let query = "
-    CREATE TABLE IF NOT EXISTS downloads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT NOT NULL,
-        file_name TEXT,
-        file_size INTEGER,
-        start_time DATETIME NOT NULL,
-        end_time DATETIME,
-        status TEXT CHECK(status IN ('in progress', 'finished', 'failed')) NOT NULL
-    );";
-    db_conn.lock().unwrap().execute(query).unwrap();
+    {
+        let query = "
+        CREATE TABLE IF NOT EXISTS downloads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT NOT NULL,
+            file_name TEXT,
+            file_size INTEGER,
+            start_time DATETIME NOT NULL,
+            end_time DATETIME,
+            status TEXT CHECK(status IN ('in progress', 'finished', 'failed')) NOT NULL
+        );";
+        db_conn.lock().unwrap().execute(query).unwrap();
+    }
 
-    let server_state = ServerState { db_conn };
-    rocket::build()
-        .manage(server_state)
-        .attach(Cors)
-        .mount("/", routes![index, file, download, get_data])
+    HttpServer::new(move || {
+        let cors = Cors::permissive();
+
+        App::new()
+            .wrap(cors)
+            .app_data(web::Data::new(ServerState {
+                db_conn: db_conn.clone(),
+            }))
+            .service(get_data)
+            .service(download)
+            .service(actix_files::Files::new("/", files_dir).index_file("index.html"))
+    })
+    .bind(("0.0.0.0", 8055))?
+    .run()
+    .await
 }
