@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fs::File, io::Write, path::Path};
 
+use crate::DownloadResult;
+
 #[derive(Serialize)]
 struct RequestBody {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -12,11 +14,6 @@ struct RequestBody {
 #[derive(Deserialize)]
 struct FinalResponse {
     direct_link: String,
-}
-
-pub struct DownloadResult {
-    pub file_name: String,
-    pub file_size: usize,
 }
 
 pub async fn download(mut url: String) -> Result<DownloadResult, Box<dyn Error + Send + Sync>> {

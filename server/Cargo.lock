@@ -491,6 +491,7 @@ dependencies = [
  "actix-cors",
  "actix-files",
  "actix-web",
+ "log",
  "pretty_env_logger",
  "reqwest",
  "serde",
