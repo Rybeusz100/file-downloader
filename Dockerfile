@@ -32,7 +32,6 @@ RUN apt update && apt upgrade -y
 RUN apt install openssl sqlite ca-certificates -y
 
 COPY --from=rust-builder /server/target/release/file-downloader .
-COPY --from=rust-builder /server/Rocket.toml .
 COPY --from=node-builder /front/dist ./front
 
 RUN mkdir config
