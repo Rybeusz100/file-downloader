@@ -33,7 +33,7 @@ function updateTable() {
             const tableRow = document.createElement('tr');
             for (const [_key, value] of Object.entries(row)) {
                 const tableColumn = document.createElement('td');
-                tableColumn.innerText = value;
+                tableColumn.innerText = value || '-';
                 tableRow.appendChild(tableColumn);
             }
             table.appendChild(tableRow);

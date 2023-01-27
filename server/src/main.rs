@@ -2,11 +2,11 @@ use actix_cors::Cors;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use db::prepare_connection;
 use log::error;
+use rusqlite::Connection;
 use serde::Deserialize;
-use sqlite::Connection;
 use std::sync::{Arc, Mutex};
 
-use crate::db::{insert_new_download, select_data, update_download, DbSelectResult};
+use crate::db::{insert_new_download, select_data, update_download};
 use crate::url::check_url;
 
 mod db;
@@ -56,7 +56,7 @@ async fn download(
 
 #[get("/data")]
 async fn get_data(state: web::Data<ServerState>) -> impl Responder {
-    let result = select_data(state.db_conn.clone()).unwrap_or(DbSelectResult(Vec::new()));
+    let result = select_data(state.db_conn.clone()).unwrap_or_default();
 
     HttpResponse::Ok()
         .content_type("application/json")
