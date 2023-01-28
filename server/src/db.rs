@@ -1,23 +1,12 @@
+use crate::DownloadResult;
+pub use db_row::*;
+use rusqlite::{params, Connection, Result};
 use std::{
     error::Error,
     sync::{Arc, Mutex},
 };
 
-use rusqlite::{params, Connection, Result};
-use serde::Serialize;
-
-use crate::DownloadResult;
-
-#[derive(Serialize, Debug)]
-pub struct DbRow {
-    pub id: u64,
-    pub url: Option<String>,
-    pub file_name: Option<String>,
-    pub file_size: Option<usize>,
-    pub start_time: String,
-    pub end_time: Option<String>,
-    pub status: String,
-}
+mod db_row;
 
 pub fn prepare_connection(path: &str) -> Arc<Mutex<Connection>> {
     let db_conn = Arc::new(Mutex::new(Connection::open(path).unwrap()));
