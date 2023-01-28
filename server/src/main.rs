@@ -1,5 +1,5 @@
 use actix_cors::Cors;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer, Responder};
 use db::prepare_connection;
 use log::error;
 use rusqlite::Connection;
@@ -85,10 +85,10 @@ async fn main() -> std::io::Result<()> {
     let db_conn = prepare_connection("./config/file-downloader.db");
 
     HttpServer::new(move || {
-        let cors = Cors::permissive();
-
         App::new()
-            .wrap(cors)
+            .wrap(Cors::permissive())
+            .wrap(middleware::Logger::default())
+            .wrap(middleware::Compress::default())
             .app_data(web::Data::new(ServerState {
                 db_conn: db_conn.clone(),
             }))
