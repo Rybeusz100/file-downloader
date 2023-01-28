@@ -1,5 +1,5 @@
 export interface DownloadQuery {
-    download_url: string
+    download_url: string;
 }
 
 export interface DbRow {

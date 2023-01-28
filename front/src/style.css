@@ -40,25 +40,3 @@ button:hover:not(:active) {
   border-radius: var(--borderRadius);
   padding: 8px 8px 8px 8px;
 }
-
-table {
-  margin-top: 10px;
-  font-size: 15px;
-  border-collapse: collapse;
-  width: 100%;
-  background-color: var(--secondaryColor);
-}
-
-th, td {
-  text-align: center;
-  padding: 8px;
-}
-
-tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-
-th {
-  background-color: var(--thirdColor);
-  color: white;
-}
