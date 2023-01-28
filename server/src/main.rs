@@ -27,6 +27,11 @@ struct ServerState {
     db_conn: Arc<Mutex<Connection>>,
 }
 
+#[get("/health")]
+async fn health_check() -> impl Responder {
+    "Healthy"
+}
+
 #[post("/download")]
 async fn download(
     state: web::Data<ServerState>,
@@ -87,8 +92,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ServerState {
                 db_conn: db_conn.clone(),
             }))
-            .service(get_data)
+            .service(health_check)
             .service(download)
+            .service(get_data)
             .service(actix_files::Files::new("/", files_dir).index_file("index.html"))
     })
     .bind(("0.0.0.0", 8055))?
