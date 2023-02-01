@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fs::File, io::Write};
 
-use crate::DownloadResult;
+use crate::{DownloadResult, DOWNLOAD_DIR};
 
 use super::get_file_name;
 
@@ -68,8 +68,8 @@ pub async fn download(mut url: String) -> Result<DownloadResult, Box<dyn Error +
         .unwrap()
         .to_owned()
         .replace("%20", " ");
-    let file_name = get_file_name("./downloads/", &original_file_name);
-    let mut file = File::create("./downloads/".to_owned() + &file_name)?;
+    let file_name = get_file_name(DOWNLOAD_DIR, &original_file_name);
+    let mut file = File::create(DOWNLOAD_DIR.to_owned() + &file_name)?;
     let file_content = file_response.bytes().await?;
     file.write_all(&file_content)?;
     Ok(DownloadResult {

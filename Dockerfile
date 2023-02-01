@@ -31,8 +31,8 @@ FROM debian:bullseye-slim
 RUN apt update -y && apt upgrade -y
 RUN apt install openssl ca-certificates curl -y
 
-COPY --from=rust-builder /server/target/release/file-downloader .
-COPY --from=node-builder /front/dist ./front
+COPY --from=rust-builder /server/target/release/file-downloader /server/file-downloader
+COPY --from=node-builder /front/dist ./front/dist
 
 RUN mkdir config
 RUN mkdir downloads
@@ -41,4 +41,4 @@ HEALTHCHECK CMD curl --fail http://localhost:8055/health || exit 1
 
 EXPOSE 8055
 
-ENTRYPOINT ["./file-downloader"]
+ENTRYPOINT ["/server/file-downloader"]
