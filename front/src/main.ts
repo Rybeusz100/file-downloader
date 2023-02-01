@@ -1,5 +1,5 @@
 import './style.css';
-import './tabulator.min.css'
+import './tabulator.min.css';
 import { API_URL } from './constants';
 import { DbRow, DownloadQuery } from './interfaces';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
@@ -7,6 +7,19 @@ import { TabulatorFull as Tabulator } from 'tabulator-tables';
 const urlInput = document.getElementById('url-input') as HTMLInputElement;
 const downloadButton = document.getElementById('download-button') as HTMLButtonElement;
 const downloadResult = document.getElementById('download-result') as HTMLElement;
+
+const table = new Tabulator('#table', {
+    layout: 'fitColumns',
+    columns: [
+        { title: 'ID', field: 'id' },
+        { title: 'URL', field: 'url' },
+        { title: 'File Name', field: 'file_name' },
+        { title: 'File Size', field: 'file_size' },
+        { title: 'Start Time', field: 'start_time' },
+        { title: 'End Time', field: 'end_time' },
+        { title: 'Status', field: 'status' },
+    ],
+});
 
 downloadButton.onclick = () => {
     const req = new XMLHttpRequest();
@@ -29,10 +42,7 @@ function updateTable() {
     req.open('GET', API_URL + '/data');
     req.onload = () => {
         const data: DbRow[] = JSON.parse(req.response);
-        new Tabulator('#table', {
-            data: data,
-            autoColumns: true
-        })
+        table.updateOrAddData(data);
     };
     req.send();
 }
