@@ -1,12 +1,15 @@
-import './style.css';
-import './tabulator.min.css';
-import { API_URL } from './constants';
-import { DbRow, DownloadQuery } from './interfaces';
+import './css/style.css';
+import './css/tabulator.min.css';
+import { API_URL } from './lib/constants';
+import { DbRow, DownloadQuery } from './lib/interfaces';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
+import { formatBytes } from './lib/utils';
 
 const urlInput = document.getElementById('url-input') as HTMLInputElement;
 const downloadButton = document.getElementById('download-button') as HTMLButtonElement;
 const downloadResult = document.getElementById('download-result') as HTMLElement;
+
+let dataJson = '';
 
 const table = new Tabulator('#table', {
     layout: 'fitColumns',
@@ -41,8 +44,16 @@ function updateTable() {
     const req = new XMLHttpRequest();
     req.open('GET', API_URL + '/data');
     req.onload = () => {
-        const data: DbRow[] = JSON.parse(req.response);
-        table.updateOrAddData(data);
+        if (req.response != dataJson) {
+            dataJson = req.response;
+            const data: DbRow[] = JSON.parse(req.response).map((entry: DbRow) => {
+                return {
+                    ...entry,
+                    file_size: entry.file_size ? formatBytes(entry.file_size) : entry.file_size,
+                };
+            });
+            table.updateOrAddData(data);
+        }
     };
     req.send();
 }

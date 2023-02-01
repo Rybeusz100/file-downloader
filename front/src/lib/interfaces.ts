@@ -3,10 +3,10 @@ export interface DownloadQuery {
 }
 
 export interface DbRow {
-    id: string;
+    id: number;
     url: string;
     file_name: string;
-    file_size: string;
+    file_size: number;
     start_time: string;
     end_time: string;
     status: string;

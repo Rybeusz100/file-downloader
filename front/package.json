@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint --ext .ts ./src",
-    "prettier": "prettier --write ./src**/*.ts"
+    "prettier": "prettier --write ./src/**/*.ts"
   },
   "devDependencies": {
     "@types/tabulator-tables": "^5.4.3",
