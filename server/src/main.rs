@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer, Responder};
 use db::prepare_connection;
-use log::error;
+use log::{debug, error};
 use rusqlite::Connection;
 use serde::Deserialize;
 use std::sync::{Arc, Mutex};
@@ -10,14 +10,15 @@ use crate::db::{insert_new_download, select_data, update_download};
 use crate::url::check_url;
 
 mod db;
+mod downloader;
 mod url;
-mod wetransfer;
 
 #[derive(Deserialize, Debug)]
 struct DownloadQuery {
     download_url: String,
 }
 
+#[derive(Debug)]
 pub struct DownloadResult {
     pub file_name: String,
     pub file_size: usize,
@@ -38,7 +39,7 @@ async fn download(
     input: web::Json<DownloadQuery>,
 ) -> impl Responder {
     let url = input.download_url.to_owned();
-    let _url_type = match check_url(&url) {
+    let url_type = match check_url(&url) {
         Some(u) => u,
         None => return "Incorrect URL",
     };
@@ -53,8 +54,12 @@ async fn download(
 
     let db_conn = state.db_conn.clone();
     tokio::spawn(async move {
-        update_download(db_conn, row_id, wetransfer::download(url).await)
-            .unwrap_or_else(|e| error!("{}", e));
+        let download_result = match url_type {
+            url::UrlType::WeTransfer => downloader::wetransfer::download(url).await,
+            url::UrlType::YouTube => downloader::youtube::download(url).await,
+        };
+        debug!("{:?}", download_result);
+        update_download(db_conn, row_id, download_result).unwrap_or_else(|e| error!("{}", e));
     });
     "Download has started"
 }

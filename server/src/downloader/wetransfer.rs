@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fs::File, io::Write, path::Path};
+use std::{error::Error, fs::File, io::Write};
 
 use crate::DownloadResult;
+
+use super::get_file_name;
 
 #[derive(Serialize)]
 struct RequestBody {
@@ -64,13 +66,9 @@ pub async fn download(mut url: String) -> Result<DownloadResult, Box<dyn Error +
         .split('/')
         .last()
         .unwrap()
-        .to_owned();
-    let mut file_name = original_file_name.clone();
-    let mut i: u8 = 1;
-    while Path::new("./downloads/").join(&file_name).exists() {
-        file_name = original_file_name.clone() + "_" + &(i.to_string());
-        i += 1;
-    }
+        .to_owned()
+        .replace("%20", " ");
+    let file_name = get_file_name("./downloads/", &original_file_name);
     let mut file = File::create("./downloads/".to_owned() + &file_name)?;
     let file_content = file_response.bytes().await?;
     file.write_all(&file_content)?;

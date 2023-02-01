@@ -38,4 +38,4 @@ function updateTable() {
 }
 
 updateTable();
-setInterval(updateTable, 5000);
+setInterval(updateTable, 1000);
