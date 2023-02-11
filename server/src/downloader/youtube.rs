@@ -1,5 +1,5 @@
-use std::fs;
 use std::{error::Error, path::Path};
+use tokio::fs;
 
 use crate::{downloader::get_file_name, DownloadResult, DOWNLOAD_DIR};
 
@@ -14,7 +14,7 @@ pub async fn download(url: String) -> Result<DownloadResult, Box<dyn Error + Sen
         .download_to(&file_path)
         .await?;
 
-    let file_size = fs::metadata(Path::new(&file_path))?.len() as usize;
+    let file_size = fs::metadata(Path::new(&file_path)).await?.len();
     Ok(DownloadResult {
         file_name,
         file_size,

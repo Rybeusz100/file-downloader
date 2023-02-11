@@ -1,5 +1,11 @@
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fs::File, io::Write};
+use std::error::Error;
+use std::path::Path;
+use tokio::{
+    fs::{self, File},
+    io::{AsyncWriteExt, BufWriter},
+};
 
 use crate::{DownloadResult, DOWNLOAD_DIR};
 
@@ -69,11 +75,16 @@ pub async fn download(mut url: String) -> Result<DownloadResult, Box<dyn Error +
         .to_owned()
         .replace("%20", " ");
     let file_name = get_file_name(DOWNLOAD_DIR, &original_file_name);
-    let mut file = File::create(DOWNLOAD_DIR.to_owned() + &file_name)?;
-    let file_content = file_response.bytes().await?;
-    file.write_all(&file_content)?;
+    let file_path = DOWNLOAD_DIR.to_owned() + &file_name;
+    let mut file = BufWriter::new(File::create(&file_path).await?);
+    let mut stream = file_response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        file.write_all(&chunk?).await?;
+    }
+    file.flush().await?;
+    let file_size = fs::metadata(Path::new(&file_path)).await?.len();
     Ok(DownloadResult {
         file_name,
-        file_size: file_content.len(),
+        file_size,
     })
 }

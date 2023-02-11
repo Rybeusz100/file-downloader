@@ -25,7 +25,7 @@ struct DownloadQuery {
 #[derive(Debug)]
 pub struct DownloadResult {
     pub file_name: String,
-    pub file_size: usize,
+    pub file_size: u64,
 }
 
 struct ServerState {
