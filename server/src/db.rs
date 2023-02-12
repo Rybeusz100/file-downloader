@@ -74,7 +74,7 @@ pub fn update_download(
     Ok(())
 }
 
-pub fn select_data(db_conn: Arc<Mutex<Connection>>) -> Result<Vec<DbRow>, Box<dyn Error>> {
+pub fn select_data(db_conn: Arc<Mutex<Connection>>) -> Result<Vec<DownloadRow>, Box<dyn Error>> {
     let db_conn = match db_conn.lock() {
         Ok(c) => c,
         Err(_) => return Err("Error locking db_conn".into()),
@@ -83,7 +83,7 @@ pub fn select_data(db_conn: Arc<Mutex<Connection>>) -> Result<Vec<DbRow>, Box<dy
     let mut stmt = db_conn.prepare(query)?;
     let rows = stmt
         .query_map([], |row| {
-            Ok(DbRow {
+            Ok(DownloadRow {
                 id: row.get(0)?,
                 url: row.get(1)?,
                 file_name: row.get(2)?,
