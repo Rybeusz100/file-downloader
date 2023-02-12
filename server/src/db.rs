@@ -1,26 +1,37 @@
 use crate::DownloadResult;
-pub use db_row::*;
+pub use downloads::*;
 use rusqlite::{params, Connection, Result};
 use std::{
     error::Error,
     sync::{Arc, Mutex},
 };
 
-mod db_row;
+mod downloads;
+mod users;
 
 pub fn prepare_connection(path: &str) -> Arc<Mutex<Connection>> {
     let db_conn = Arc::new(Mutex::new(Connection::open(path).unwrap()));
-    let query = "
-    CREATE TABLE IF NOT EXISTS downloads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT NOT NULL,
-        file_name TEXT,
-        file_size INTEGER,
-        start_time DATETIME NOT NULL,
-        end_time DATETIME,
-        status TEXT CHECK(status IN ('in progress', 'finished', 'failed')) NOT NULL
-    );";
-    db_conn.lock().unwrap().execute(query, []).unwrap();
+    let queries = [
+        "
+            CREATE TABLE IF NOT EXISTS downloads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT NOT NULL,
+            file_name TEXT,
+            file_size INTEGER,
+            start_time DATETIME NOT NULL,
+            end_time DATETIME,
+            status TEXT CHECK(status IN ('in progress', 'finished', 'failed')) NOT NULL);
+        ",
+        "
+            CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            password TEXT NOT NULL);
+        ",
+    ];
+    for query in queries {
+        db_conn.lock().unwrap().execute(query, []).unwrap();
+    }
     db_conn
 }
 
@@ -97,4 +108,40 @@ pub fn select_data(db_conn: Arc<Mutex<Connection>>) -> Result<Vec<DownloadRow>, 
         .collect();
 
     Ok(rows)
+}
+
+pub fn insert_new_user(
+    db_conn: Arc<Mutex<Connection>>,
+    name: &str,
+    password: &str,
+) -> Result<u64, Box<dyn Error>> {
+    let db_conn = match db_conn.lock() {
+        Ok(c) => c,
+        Err(_) => return Err("Error locking db_conn".into()),
+    };
+
+    let query = "INSERT INTO users VALUES (NULL, ?1, ?2)";
+    db_conn.execute(query, [name, password])?;
+    let inserted_row_id: u64 =
+        db_conn.query_row("SELECT last_insert_rowid()", [], |row| row.get(0))?;
+    Ok(inserted_row_id)
+}
+
+pub fn check_user_name_free(
+    db_conn: Arc<Mutex<Connection>>,
+    name: &str,
+) -> Result<bool, Box<dyn Error>> {
+    let db_conn = match db_conn.lock() {
+        Ok(c) => c,
+        Err(_) => return Err("Error locking db_conn".into()),
+    };
+
+    let id: Result<u64> =
+        db_conn.query_row("SELECT id FROM users WHERE name = ?1", [&name], |row| {
+            row.get(0)
+        });
+    match id {
+        Ok(_) => Ok(false),
+        _ => Ok(true),
+    }
 }

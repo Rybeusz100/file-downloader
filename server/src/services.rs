@@ -1,10 +1,16 @@
 use crate::{
-    db::{insert_new_download, select_data, update_download},
+    db::{
+        check_user_name_free, insert_new_download, insert_new_user, select_data, update_download,
+    },
     downloader,
     url::{self, check_url},
-    DownloadQuery, ServerState,
+    CreateUserQuery, DownloadQuery, ServerState,
 };
 use actix_web::{get, post, web, HttpResponse, Responder};
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    Argon2,
+};
 use log::{debug, error};
 
 #[get("/health")]
@@ -50,4 +56,36 @@ async fn get_data(state: web::Data<ServerState>) -> impl Responder {
     HttpResponse::Ok()
         .content_type("application/json")
         .body(serde_json::to_string(&result).unwrap_or_else(|_| "[]".to_owned()))
+}
+
+#[post("/create_user")]
+async fn create_user(
+    state: web::Data<ServerState>,
+    input: web::Json<CreateUserQuery>,
+) -> impl Responder {
+    let input: CreateUserQuery = input.into_inner();
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(input.password.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
+
+    match check_user_name_free(state.db_conn.clone(), &input.name) {
+        Ok(false) => return format!("User with name {} already exists", input.name),
+        Err(why) => {
+            error!("{}", why);
+            return "Error creating the user".to_owned();
+        }
+        Ok(true) => (),
+    }
+
+    match insert_new_user(state.db_conn.clone(), &input.name, &password_hash) {
+        Ok(id) => id.to_string(),
+        Err(why) => {
+            error!("{}", why);
+            "Error creating the user".to_owned()
+        }
+    }
 }

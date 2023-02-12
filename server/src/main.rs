@@ -26,6 +26,12 @@ pub struct DownloadResult {
     pub file_size: u64,
 }
 
+#[derive(Deserialize, Debug)]
+struct CreateUserQuery {
+    name: String,
+    password: String,
+}
+
 struct ServerState {
     db_conn: Arc<Mutex<Connection>>,
 }
@@ -52,6 +58,7 @@ async fn main() -> std::io::Result<()> {
             .service(health_check)
             .service(download)
             .service(get_data)
+            .service(create_user)
             .service(actix_files::Files::new("/", FILES_DIR).index_file("index.html"))
     })
     .bind(("0.0.0.0", 8055))?
