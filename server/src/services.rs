@@ -1,11 +1,8 @@
 use crate::{
-    db::{
-        check_user_name_free, get_user_with_name, insert_new_download, insert_new_user,
-        select_data, update_download,
-    },
+    db::*,
     downloader,
     url::{self, check_url},
-    CreateUserQuery, DownloadQuery, ServerState, TokenClaims,
+    AppState, CreateUserQuery, DownloadQuery, TokenClaims,
 };
 use actix_web::{get, post, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::basic::BasicAuth;
@@ -22,10 +19,7 @@ async fn health_check() -> impl Responder {
 }
 
 #[post("/download")]
-async fn download(
-    state: web::Data<ServerState>,
-    input: web::Json<DownloadQuery>,
-) -> impl Responder {
+async fn download(state: web::Data<AppState>, input: web::Json<DownloadQuery>) -> impl Responder {
     let url = input.download_url.to_owned();
     let url_type = match check_url(&url) {
         Some(u) => u,
@@ -53,7 +47,7 @@ async fn download(
 }
 
 #[get("/data")]
-async fn get_data(state: web::Data<ServerState>) -> impl Responder {
+async fn get_data(state: web::Data<AppState>) -> impl Responder {
     let result = select_data(state.db_conn.clone()).unwrap_or_default();
 
     HttpResponse::Ok()
@@ -63,7 +57,7 @@ async fn get_data(state: web::Data<ServerState>) -> impl Responder {
 
 #[post("/create_user")]
 async fn create_user(
-    state: web::Data<ServerState>,
+    state: web::Data<AppState>,
     input: web::Json<CreateUserQuery>,
 ) -> impl Responder {
     let input: CreateUserQuery = input.into_inner();
@@ -94,7 +88,7 @@ async fn create_user(
 }
 
 #[get("/auth")]
-async fn auth(state: web::Data<ServerState>, credentials: BasicAuth) -> impl Responder {
+async fn auth(state: web::Data<AppState>, credentials: BasicAuth) -> impl Responder {
     let username = credentials.user_id();
     let password = credentials.password();
 
