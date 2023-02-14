@@ -1,16 +1,19 @@
 use crate::{
     db::{
-        check_user_name_free, insert_new_download, insert_new_user, select_data, update_download,
+        check_user_name_free, get_user_with_name, insert_new_download, insert_new_user,
+        select_data, update_download,
     },
     downloader,
     url::{self, check_url},
-    CreateUserQuery, DownloadQuery, ServerState,
+    CreateUserQuery, DownloadQuery, ServerState, TokenClaims,
 };
 use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web_httpauth::extractors::basic::BasicAuth;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2,
+    Argon2, PasswordHash, PasswordVerifier,
 };
+use jwt::SignWithKey;
 use log::{debug, error};
 
 #[get("/health")]
@@ -87,5 +90,38 @@ async fn create_user(
             error!("{}", why);
             "Error creating the user".to_owned()
         }
+    }
+}
+
+#[get("/auth")]
+async fn auth(state: web::Data<ServerState>, credentials: BasicAuth) -> impl Responder {
+    let username = credentials.user_id();
+    let password = credentials.password();
+
+    match password {
+        None => HttpResponse::Unauthorized().json("Incorrect username or password"),
+        Some(pass) => match get_user_with_name(state.db_conn.clone(), username) {
+            Err(why) => {
+                error!("{}", why);
+                HttpResponse::InternalServerError().finish()
+            }
+            Ok(user_opt) => match user_opt {
+                None => HttpResponse::Unauthorized().json("Incorrect username or password"),
+                Some(user) => {
+                    let parsed_hash = PasswordHash::new(&user.password).unwrap();
+                    let argon2 = Argon2::default();
+                    if argon2
+                        .verify_password(pass.as_bytes(), &parsed_hash)
+                        .is_ok()
+                    {
+                        let claims = TokenClaims { id: user.id };
+                        let token = claims.sign_with_key(&state.jwt_secret).unwrap();
+                        HttpResponse::Ok().json(token)
+                    } else {
+                        HttpResponse::Unauthorized().json("Incorrect username or password")
+                    }
+                }
+            },
+        },
     }
 }

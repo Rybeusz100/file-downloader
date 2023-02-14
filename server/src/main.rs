@@ -1,15 +1,19 @@
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
 use db::prepare_connection;
+use hmac::Hmac;
 use rusqlite::Connection;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::*;
+use sha2::Sha256;
 use std::sync::{Arc, Mutex};
+use utils::generate_jwt_secret;
 
 mod db;
 mod downloader;
 mod services;
 mod url;
+mod utils;
 
 const DB_FILE: &str = "./config/file-downloader.db";
 const DOWNLOAD_DIR: &str = "./downloads/";
@@ -34,6 +38,12 @@ struct CreateUserQuery {
 
 struct ServerState {
     db_conn: Arc<Mutex<Connection>>,
+    jwt_secret: Hmac<Sha256>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TokenClaims {
+    id: u64,
 }
 
 #[actix_web::main]
@@ -54,11 +64,13 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Compress::default())
             .app_data(web::Data::new(ServerState {
                 db_conn: db_conn.clone(),
+                jwt_secret: generate_jwt_secret(),
             }))
             .service(health_check)
             .service(download)
             .service(get_data)
             .service(create_user)
+            .service(auth)
             .service(actix_files::Files::new("/", FILES_DIR).index_file("index.html"))
     })
     .bind(("0.0.0.0", 8055))?

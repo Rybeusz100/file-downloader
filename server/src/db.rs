@@ -5,6 +5,7 @@ use std::{
     error::Error,
     sync::{Arc, Mutex},
 };
+use users::*;
 
 mod downloads;
 mod users;
@@ -144,4 +145,25 @@ pub fn check_user_name_free(
         Ok(_) => Ok(false),
         _ => Ok(true),
     }
+}
+
+pub fn get_user_with_name(
+    db_conn: Arc<Mutex<Connection>>,
+    name: &str,
+) -> Result<Option<UserRow>, Box<dyn Error>> {
+    let db_conn = match db_conn.lock() {
+        Ok(c) => c,
+        Err(_) => return Err("Error locking db_conn".into()),
+    };
+
+    let user: Result<UserRow> =
+        db_conn.query_row("SELECT * FROM users WHERE name = ?1", [&name], |row| {
+            Ok(UserRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                password: row.get(2)?,
+            })
+        });
+
+    Ok(user.ok())
 }
