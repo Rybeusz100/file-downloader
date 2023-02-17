@@ -10,6 +10,7 @@ pub struct DownloadRow {
     pub start_time: String,
     pub end_time: Option<String>,
     pub status: Status,
+    pub user_id: u64,
 }
 
 #[derive(Serialize, Debug)]

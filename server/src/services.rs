@@ -4,7 +4,11 @@ use crate::{
     url::{self, check_url},
     AppState, CreateUserQuery, DownloadQuery, TokenClaims,
 };
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{
+    get, post,
+    web::{self, ReqData},
+    HttpResponse, Responder,
+};
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
@@ -19,14 +23,22 @@ async fn health_check() -> impl Responder {
 }
 
 #[post("/download")]
-async fn download(state: web::Data<AppState>, input: web::Json<DownloadQuery>) -> impl Responder {
+async fn download(
+    req_user: Option<ReqData<TokenClaims>>,
+    state: web::Data<AppState>,
+    input: web::Json<DownloadQuery>,
+) -> impl Responder {
+    let user_id = match req_user {
+        None => return "User validated but no ID???",
+        Some(user) => user.id,
+    };
     let url = input.download_url.to_owned();
     let url_type = match check_url(&url) {
         Some(u) => u,
         None => return "Incorrect URL",
     };
 
-    let row_id = match insert_new_download(state.db_conn.clone(), &url) {
+    let row_id = match insert_new_download(state.db_conn.clone(), &url, user_id) {
         Ok(r) => r,
         Err(why) => {
             error!("{}", why);
@@ -47,8 +59,14 @@ async fn download(state: web::Data<AppState>, input: web::Json<DownloadQuery>) -
 }
 
 #[get("/data")]
-async fn get_data(state: web::Data<AppState>) -> impl Responder {
-    let result = select_data(state.db_conn.clone()).unwrap_or_default();
+async fn data(
+    req_user: Option<ReqData<TokenClaims>>,
+    state: web::Data<AppState>,
+) -> impl Responder {
+    let result = match req_user {
+        None => Vec::new(),
+        Some(user) => select_data(state.db_conn.clone(), user.id).unwrap_or_default(),
+    };
 
     HttpResponse::Ok()
         .content_type("application/json")

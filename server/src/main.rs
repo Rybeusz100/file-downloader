@@ -44,7 +44,7 @@ struct AppState {
     jwt_secret: Hmac<Sha256>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TokenClaims {
     id: u64,
 }
@@ -75,10 +75,10 @@ async fn main() -> std::io::Result<()> {
             .service(create_user)
             .service(auth)
             .service(
-                web::scope("")
+                web::scope("/restricted")
                     .wrap(bearer_middleware)
                     .service(download)
-                    .service(get_data),
+                    .service(data),
             )
             .service(actix_files::Files::new("/", FILES_DIR).index_file("index.html"))
     })

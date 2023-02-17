@@ -10,4 +10,5 @@ export interface DbRow {
     start_time: string;
     end_time: string;
     status: string;
+    user_id: number;
 }

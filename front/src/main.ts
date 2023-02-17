@@ -3,10 +3,11 @@ import './css/tabulator.min.css';
 import { API_URL } from './lib/constants';
 import { DbRow, DownloadQuery } from './lib/interfaces';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
-import { formatBytes } from './lib/utils';
+import { formatBytes, login } from './lib/utils';
 
 const urlInput = document.getElementById('url-input') as HTMLInputElement;
 const downloadButton = document.getElementById('download-button') as HTMLButtonElement;
+const loginButton = document.getElementById('login-button') as HTMLButtonElement;
 const downloadResult = document.getElementById('download-result') as HTMLElement;
 
 let dataJson = '';
@@ -25,15 +26,30 @@ const table = new Tabulator('#table', {
 });
 
 downloadButton.onclick = () => {
-    const req = new XMLHttpRequest();
-    req.open('POST', API_URL + '/download');
-    req.setRequestHeader('Content-Type', 'application/json');
+    downloadResult.style.display = 'inline-block';
+    const token = localStorage.getItem('token');
+    if (!token) {
+        downloadResult.innerText = 'Login first';
+        return;
+    }
     const data: DownloadQuery = { download_url: urlInput.value.trim() };
-    req.onload = () => {
-        downloadResult.style.display = 'inline-block';
-        downloadResult.innerText = req.response;
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
     };
-    req.send(JSON.stringify(data));
+    fetch(API_URL + '/restricted/download', options).then(async (response) => {
+        downloadResult.innerText = await response.text();
+    });
+};
+
+loginButton.onclick = () => {
+    localStorage.removeItem('token');
+    login();
+    table.clearData();
 };
 
 urlInput.oninput = () => {
@@ -41,22 +57,43 @@ urlInput.oninput = () => {
 };
 
 function updateTable() {
-    const req = new XMLHttpRequest();
-    req.open('GET', API_URL + '/data');
-    req.onload = () => {
-        if (req.response != dataJson) {
-            dataJson = req.response;
-            const data: DbRow[] = JSON.parse(req.response).map((entry: DbRow) => {
-                return {
-                    ...entry,
-                    file_size: entry.file_size ? formatBytes(entry.file_size) : entry.file_size,
-                };
-            });
-            table.updateOrAddData(data);
-        }
+    const token = localStorage.getItem('token');
+    if (!token) {
+        setTimeout(updateTable, 1000);
+        return;
+    }
+    const options = {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
     };
-    req.send();
+    fetch(API_URL + '/restricted/data', options)
+        .then((response) => {
+            if (response.ok) {
+                return response.text();
+            } else {
+                throw new Error('Request failed');
+            }
+        })
+        .then((data) => {
+            if (data !== dataJson) {
+                dataJson = data;
+                const newData: DbRow[] = JSON.parse(data).map((entry: DbRow) => {
+                    return {
+                        ...entry,
+                        file_size: entry.file_size ? formatBytes(entry.file_size) : entry.file_size,
+                    };
+                });
+                table.updateOrAddData(newData);
+            }
+        })
+        .catch((error) => {
+            console.error(error);
+        })
+        .finally(() => {
+            setTimeout(updateTable, 1000);
+        });
 }
 
 updateTable();
-setInterval(updateTable, 1000);

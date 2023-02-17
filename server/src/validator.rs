@@ -25,7 +25,7 @@ pub async fn validator(
                 .app_data::<bearer::Config>()
                 .cloned()
                 .unwrap_or_default()
-                .scope("");
+                .scope("/restricted");
 
             Err((AuthenticationError::from(config).into(), req))
         }

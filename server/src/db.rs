@@ -21,7 +21,9 @@ pub fn prepare_connection(path: &str) -> Arc<Mutex<Connection>> {
             file_size INTEGER,
             start_time DATETIME NOT NULL,
             end_time DATETIME,
-            status TEXT CHECK(status IN ('in progress', 'finished', 'failed')) NOT NULL);
+            status TEXT CHECK(status IN ('in progress', 'finished', 'failed')) NOT NULL,
+            user_id INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id));
         ",
         "
             CREATE TABLE IF NOT EXISTS users (
@@ -39,14 +41,15 @@ pub fn prepare_connection(path: &str) -> Arc<Mutex<Connection>> {
 pub fn insert_new_download(
     db_conn: Arc<Mutex<Connection>>,
     url: &str,
+    user_id: u64,
 ) -> Result<u64, Box<dyn Error>> {
     let db_conn = match db_conn.lock() {
         Ok(c) => c,
         Err(_) => return Err("Error locking db_conn".into()),
     };
     let query =
-        "INSERT INTO downloads VALUES (NULL, ?1, NULL, NULL, datetime(), NULL, 'in progress')";
-    db_conn.execute(query, [url])?;
+        "INSERT INTO downloads VALUES (NULL, ?1, NULL, NULL, datetime(), NULL, 'in progress', ?2)";
+    db_conn.execute(query, params![url, user_id])?;
 
     let inserted_row_id: u64 =
         db_conn.query_row("SELECT last_insert_rowid()", [], |row| row.get(0))?;
@@ -86,15 +89,18 @@ pub fn update_download(
     Ok(())
 }
 
-pub fn select_data(db_conn: Arc<Mutex<Connection>>) -> Result<Vec<DownloadRow>, Box<dyn Error>> {
+pub fn select_data(
+    db_conn: Arc<Mutex<Connection>>,
+    user_id: u64,
+) -> Result<Vec<DownloadRow>, Box<dyn Error>> {
     let db_conn = match db_conn.lock() {
         Ok(c) => c,
         Err(_) => return Err("Error locking db_conn".into()),
     };
-    let query = "SELECT * FROM downloads";
+    let query = "SELECT * FROM downloads WHERE user_id = ?1";
     let mut stmt = db_conn.prepare(query)?;
     let rows = stmt
-        .query_map([], |row| {
+        .query_map([user_id], |row| {
             Ok(DownloadRow {
                 id: row.get(0)?,
                 url: row.get(1)?,
@@ -103,6 +109,7 @@ pub fn select_data(db_conn: Arc<Mutex<Connection>>) -> Result<Vec<DownloadRow>, 
                 start_time: row.get(4)?,
                 end_time: row.get(5)?,
                 status: row.get(6)?,
+                user_id: row.get(7)?,
             })
         })?
         .map(|r| r.unwrap())
