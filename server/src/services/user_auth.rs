@@ -6,7 +6,7 @@ use log::error;
 use rand::rngs::OsRng;
 
 use crate::{
-    db::{check_user_name_free, insert_new_user, get_user},
+    db::{check_user_name_free, get_user, insert_new_user},
     AppState, CreateUserQuery, TokenClaims,
 };
 

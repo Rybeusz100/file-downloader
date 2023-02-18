@@ -157,7 +157,7 @@ pub fn check_user_name_free(
 pub fn get_user(
     db_conn: Arc<Mutex<Connection>>,
     id: Option<u64>,
-    name: Option<String>
+    name: Option<String>,
 ) -> Result<Option<User>, Box<dyn Error>> {
     let db_conn = match db_conn.lock() {
         Ok(c) => c,
@@ -176,8 +176,7 @@ pub fn get_user(
         params.push(name);
     }
 
-    let user: Result<User> =
-    db_conn.query_row(&query, &params[..], |row| {
+    let user: Result<User> = db_conn.query_row(&query, &params[..], |row| {
         Ok(User {
             id: row.get(0)?,
             name: row.get(1)?,

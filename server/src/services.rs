@@ -1,7 +1,7 @@
-pub use main::*;
+pub use basic::*;
 pub use health::*;
 pub use user_auth::*;
 
-mod main;
+mod basic;
 mod health;
 mod user_auth;
