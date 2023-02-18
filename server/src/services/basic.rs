@@ -6,7 +6,7 @@ use actix_web::{
 use log::{debug, error};
 
 use crate::{
-    db::{insert_new_download, select_data, update_download},
+    db::{get_user, insert_new_download, select_data, update_download},
     downloader,
     url::{self, check_url},
     AppState, DownloadQuery, TokenClaims,
@@ -37,10 +37,18 @@ async fn download(
     };
 
     let db_conn = state.db_conn.clone();
+
+    let user = match get_user(db_conn.clone(), Some(user_id), None) {
+        Ok(Some(u)) => u,
+        _ => {
+            return "Error preparing user data";
+        }
+    };
+
     tokio::spawn(async move {
         let download_result = match url_type {
-            url::UrlType::WeTransfer => downloader::wetransfer::download(url).await,
-            url::UrlType::YouTube => downloader::youtube::download(url).await,
+            url::UrlType::WeTransfer => downloader::wetransfer::download(url, &user.name).await,
+            url::UrlType::YouTube => downloader::youtube::download(url, &user.name).await,
         };
         debug!("{:?}", download_result);
         update_download(db_conn, row_id, download_result).unwrap_or_else(|e| error!("{}", e));

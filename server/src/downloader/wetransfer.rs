@@ -7,9 +7,9 @@ use tokio::{
     io::{AsyncWriteExt, BufWriter},
 };
 
-use crate::{DownloadResult, DOWNLOAD_DIR};
+use crate::DownloadResult;
 
-use super::get_file_name;
+use super::get_file_info;
 
 #[derive(Serialize)]
 struct RequestBody {
@@ -24,7 +24,10 @@ struct FinalResponse {
     direct_link: String,
 }
 
-pub async fn download(mut url: String) -> Result<DownloadResult, Box<dyn Error + Send + Sync>> {
+pub async fn download(
+    mut url: String,
+    username: &str,
+) -> Result<DownloadResult, Box<dyn Error + Send + Sync>> {
     if url.starts_with("https://we.tl/") {
         let resp = reqwest::get(&url).await?;
         url = "https://wetransfer.com".to_owned() + resp.url().path();
@@ -74,17 +77,16 @@ pub async fn download(mut url: String) -> Result<DownloadResult, Box<dyn Error +
         .unwrap()
         .to_owned()
         .replace("%20", " ");
-    let file_name = get_file_name(DOWNLOAD_DIR, &original_file_name);
-    let file_path = DOWNLOAD_DIR.to_owned() + &file_name;
-    let mut file = BufWriter::new(File::create(&file_path).await?);
+    let file_info = get_file_info(&original_file_name, username);
+    let mut file = BufWriter::new(File::create(&file_info.path).await?);
     let mut stream = file_response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         file.write_all(&chunk?).await?;
     }
     file.flush().await?;
-    let file_size = fs::metadata(Path::new(&file_path)).await?.len();
+    let file_size = fs::metadata(Path::new(&file_info.path)).await?.len();
     Ok(DownloadResult {
-        file_name,
+        file_name: file_info.name,
         file_size,
     })
 }

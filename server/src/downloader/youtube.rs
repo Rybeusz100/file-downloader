@@ -1,22 +1,24 @@
 use std::{error::Error, path::Path};
 use tokio::fs;
 
-use crate::{downloader::get_file_name, DownloadResult, DOWNLOAD_DIR};
+use crate::{downloader::get_file_info, DownloadResult};
 
-pub async fn download(url: String) -> Result<DownloadResult, Box<dyn Error + Send + Sync>> {
-    let file_name = get_file_name(DOWNLOAD_DIR, "YouTube video.mp4");
-    let file_path = DOWNLOAD_DIR.to_owned() + &file_name;
+pub async fn download(
+    url: String,
+    username: &str,
+) -> Result<DownloadResult, Box<dyn Error + Send + Sync>> {
+    let file_info = get_file_info("YouTube video.mp4", username);
     let video = rustube::Video::from_url(&reqwest::Url::parse(&url)?).await?;
 
     video
         .best_quality()
         .ok_or("Error downloading YouTube video")?
-        .download_to(&file_path)
+        .download_to(&file_info.path)
         .await?;
 
-    let file_size = fs::metadata(Path::new(&file_path)).await?.len();
+    let file_size = fs::metadata(Path::new(&file_info.path)).await?.len();
     Ok(DownloadResult {
-        file_name,
+        file_name: file_info.name,
         file_size,
     })
 }
