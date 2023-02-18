@@ -31,6 +31,11 @@ pub fn prepare_connection(path: &str) -> Arc<Mutex<Connection>> {
             name TEXT NOT NULL,
             password TEXT NOT NULL);
         ",
+        "
+            UPDATE downloads
+            SET status = 'failed'
+            WHERE status = 'in progress';
+        ",
     ];
     for query in queries {
         db_conn.lock().unwrap().execute(query, []).unwrap();
