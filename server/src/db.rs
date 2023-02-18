@@ -92,7 +92,7 @@ pub fn update_download(
 pub fn select_data(
     db_conn: Arc<Mutex<Connection>>,
     user_id: u64,
-) -> Result<Vec<DownloadRow>, Box<dyn Error>> {
+) -> Result<Vec<Download>, Box<dyn Error>> {
     let db_conn = match db_conn.lock() {
         Ok(c) => c,
         Err(_) => return Err("Error locking db_conn".into()),
@@ -101,7 +101,7 @@ pub fn select_data(
     let mut stmt = db_conn.prepare(query)?;
     let rows = stmt
         .query_map([user_id], |row| {
-            Ok(DownloadRow {
+            Ok(Download {
                 id: row.get(0)?,
                 url: row.get(1)?,
                 file_name: row.get(2)?,
@@ -154,23 +154,36 @@ pub fn check_user_name_free(
     }
 }
 
-pub fn get_user_with_name(
+pub fn get_user(
     db_conn: Arc<Mutex<Connection>>,
-    name: &str,
-) -> Result<Option<UserRow>, Box<dyn Error>> {
+    id: Option<u64>,
+    name: Option<String>
+) -> Result<Option<User>, Box<dyn Error>> {
     let db_conn = match db_conn.lock() {
         Ok(c) => c,
         Err(_) => return Err("Error locking db_conn".into()),
     };
 
-    let user: Result<UserRow> =
-        db_conn.query_row("SELECT * FROM users WHERE name = ?1", [&name], |row| {
-            Ok(UserRow {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                password: row.get(2)?,
-            })
-        });
+    let mut query = "SELECT id, name, password FROM users WHERE 1=1".to_string();
+    let mut params: Vec<&dyn rusqlite::types::ToSql> = vec![];
+
+    if let Some(id) = id.as_ref() {
+        query += " AND id = ?";
+        params.push(id);
+    }
+    if let Some(name) = name.as_ref() {
+        query += " AND name = ?";
+        params.push(name);
+    }
+
+    let user: Result<User> =
+    db_conn.query_row(&query, &params[..], |row| {
+        Ok(User {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            password: row.get(2)?,
+        })
+    });
 
     Ok(user.ok())
 }

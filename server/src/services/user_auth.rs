@@ -6,7 +6,7 @@ use log::error;
 use rand::rngs::OsRng;
 
 use crate::{
-    db::{check_user_name_free, get_user_with_name, insert_new_user},
+    db::{check_user_name_free, insert_new_user, get_user},
     AppState, CreateUserQuery, TokenClaims,
 };
 
@@ -44,12 +44,12 @@ async fn create_user(
 
 #[get("/auth")]
 async fn auth(state: web::Data<AppState>, credentials: BasicAuth) -> impl Responder {
-    let username = credentials.user_id();
+    let username = credentials.user_id().to_owned();
     let password = credentials.password();
 
     match password {
         None => HttpResponse::Unauthorized().json("Incorrect username or password"),
-        Some(pass) => match get_user_with_name(state.db_conn.clone(), username) {
+        Some(pass) => match get_user(state.db_conn.clone(), None, Some(username)) {
             Err(why) => {
                 error!("{}", why);
                 HttpResponse::InternalServerError().finish()

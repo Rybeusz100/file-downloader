@@ -2,7 +2,7 @@ use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]
-pub struct DownloadRow {
+pub struct Download {
     pub id: u64,
     pub url: Option<String>,
     pub file_name: Option<String>,
