@@ -8,15 +8,16 @@ use log::{debug, error};
 use crate::{
     db::{get_user, insert_new_download, select_data, update_download},
     downloader,
+    models::DownloadRequest,
     url::{self, check_url},
-    AppState, DownloadQuery, TokenClaims,
+    AppState, TokenClaims,
 };
 
 #[post("/download")]
 async fn download(
     req_user: Option<ReqData<TokenClaims>>,
     state: web::Data<AppState>,
-    input: web::Json<DownloadQuery>,
+    input: web::Json<DownloadRequest>,
 ) -> impl Responder {
     let user_id = match req_user {
         None => return "User validated but no ID???",

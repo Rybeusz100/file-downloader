@@ -1,14 +1,10 @@
-use crate::DownloadResult;
-pub use downloads::*;
 use rusqlite::{params, Connection, Result};
 use std::{
     error::Error,
     sync::{Arc, Mutex},
 };
-use users::*;
 
-mod downloads;
-mod users;
+use crate::models::{Download, DownloadResult, User};
 
 pub fn prepare_connection(path: &str) -> Arc<Mutex<Connection>> {
     let db_conn = Arc::new(Mutex::new(Connection::open(path).unwrap()));
@@ -47,11 +43,8 @@ pub fn insert_new_download(
     db_conn: Arc<Mutex<Connection>>,
     url: &str,
     user_id: u64,
-) -> Result<u64, Box<dyn Error>> {
-    let db_conn = match db_conn.lock() {
-        Ok(c) => c,
-        Err(_) => return Err("Error locking db_conn".into()),
-    };
+) -> Result<u64> {
+    let db_conn = db_conn.lock().unwrap();
     let query =
         "INSERT INTO downloads VALUES (NULL, ?1, NULL, NULL, datetime(), NULL, 'in progress', ?2)";
     db_conn.execute(query, params![url, user_id])?;
@@ -65,11 +58,8 @@ pub fn update_download(
     db_conn: Arc<Mutex<Connection>>,
     row_id: u64,
     result: Result<DownloadResult, Box<dyn Error + Send + Sync>>,
-) -> Result<(), Box<dyn Error>> {
-    let db_conn = match db_conn.lock() {
-        Ok(c) => c,
-        Err(_) => return Err("Error locking db_conn".into()),
-    };
+) -> Result<()> {
+    let db_conn = db_conn.lock().unwrap();
     match result {
         Ok(download_result) => {
             let query = "
@@ -94,14 +84,8 @@ pub fn update_download(
     Ok(())
 }
 
-pub fn select_data(
-    db_conn: Arc<Mutex<Connection>>,
-    user_id: u64,
-) -> Result<Vec<Download>, Box<dyn Error>> {
-    let db_conn = match db_conn.lock() {
-        Ok(c) => c,
-        Err(_) => return Err("Error locking db_conn".into()),
-    };
+pub fn select_data(db_conn: Arc<Mutex<Connection>>, user_id: u64) -> Result<Vec<Download>> {
+    let db_conn = db_conn.lock().unwrap();
     let query = "SELECT * FROM downloads WHERE user_id = ?1";
     let mut stmt = db_conn.prepare(query)?;
     let rows = stmt
@@ -123,15 +107,8 @@ pub fn select_data(
     Ok(rows)
 }
 
-pub fn insert_new_user(
-    db_conn: Arc<Mutex<Connection>>,
-    name: &str,
-    password: &str,
-) -> Result<u64, Box<dyn Error>> {
-    let db_conn = match db_conn.lock() {
-        Ok(c) => c,
-        Err(_) => return Err("Error locking db_conn".into()),
-    };
+pub fn insert_new_user(db_conn: Arc<Mutex<Connection>>, name: &str, password: &str) -> Result<u64> {
+    let db_conn = db_conn.lock().unwrap();
 
     let query = "INSERT INTO users VALUES (NULL, ?1, ?2)";
     db_conn.execute(query, [name, password])?;
@@ -140,14 +117,8 @@ pub fn insert_new_user(
     Ok(inserted_row_id)
 }
 
-pub fn check_user_name_free(
-    db_conn: Arc<Mutex<Connection>>,
-    name: &str,
-) -> Result<bool, Box<dyn Error>> {
-    let db_conn = match db_conn.lock() {
-        Ok(c) => c,
-        Err(_) => return Err("Error locking db_conn".into()),
-    };
+pub fn check_user_name_free(db_conn: Arc<Mutex<Connection>>, name: &str) -> Result<bool> {
+    let db_conn = db_conn.lock().unwrap();
 
     let id: Result<u64> =
         db_conn.query_row("SELECT id FROM users WHERE name = ?1", [&name], |row| {
@@ -163,14 +134,11 @@ pub fn get_user(
     db_conn: Arc<Mutex<Connection>>,
     id: Option<u64>,
     name: Option<String>,
-) -> Result<Option<User>, Box<dyn Error>> {
-    let db_conn = match db_conn.lock() {
-        Ok(c) => c,
-        Err(_) => return Err("Error locking db_conn".into()),
-    };
+) -> Result<Option<User>> {
+    let db_conn = db_conn.lock().unwrap();
 
-    let mut query = "SELECT id, name, password FROM users WHERE 1=1".to_string();
-    let mut params: Vec<&dyn rusqlite::types::ToSql> = vec![];
+    let mut query = "SELECT id, name, password FROM users WHERE 1=1".to_owned();
+    let mut params: Vec<&dyn rusqlite::types::ToSql> = Vec::new();
 
     if let Some(id) = id.as_ref() {
         query += " AND id = ?";

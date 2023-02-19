@@ -1,7 +1,7 @@
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize)]
 pub struct Download {
     pub id: u64,
     pub url: Option<String>,
@@ -13,7 +13,7 @@ pub struct Download {
     pub user_id: u64,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize)]
 pub enum Status {
     #[serde(rename = "in progress")]
     InProgress,
@@ -32,4 +32,15 @@ impl FromSql for Status {
             _ => Err(FromSqlError::InvalidType),
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DownloadRequest {
+    pub download_url: String,
+}
+
+#[derive(Debug)]
+pub struct DownloadResult {
+    pub file_name: String,
+    pub file_size: u64,
 }

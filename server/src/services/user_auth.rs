@@ -7,15 +7,16 @@ use rand::rngs::OsRng;
 
 use crate::{
     db::{check_user_name_free, get_user, insert_new_user},
-    AppState, CreateUserQuery, TokenClaims,
+    models::CreateUserRequest,
+    AppState, TokenClaims,
 };
 
 #[post("/create_user")]
 async fn create_user(
     state: web::Data<AppState>,
-    input: web::Json<CreateUserQuery>,
+    input: web::Json<CreateUserRequest>,
 ) -> impl Responder {
-    let input: CreateUserQuery = input.into_inner();
+    let input: CreateUserRequest = input.into_inner();
 
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();

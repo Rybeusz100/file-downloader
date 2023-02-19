@@ -13,6 +13,7 @@ use validator::validator;
 
 mod db;
 mod downloader;
+mod models;
 mod services;
 mod url;
 mod utils;
@@ -21,23 +22,6 @@ mod validator;
 const DB_FILE: &str = "./config/file-downloader.db";
 const DOWNLOAD_DIR: &str = "./downloads/";
 const FILES_DIR: &str = "../front/dist/";
-
-#[derive(Deserialize, Debug)]
-struct DownloadQuery {
-    download_url: String,
-}
-
-#[derive(Debug)]
-pub struct DownloadResult {
-    pub file_name: String,
-    pub file_size: u64,
-}
-
-#[derive(Deserialize, Debug)]
-struct CreateUserQuery {
-    name: String,
-    password: String,
-}
 
 struct AppState {
     db_conn: Arc<Mutex<Connection>>,

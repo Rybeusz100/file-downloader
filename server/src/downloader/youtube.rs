@@ -1,7 +1,7 @@
 use std::{error::Error, path::Path};
 use tokio::fs;
 
-use crate::{downloader::get_file_info, DownloadResult};
+use crate::{downloader::get_file_info, models::DownloadResult};
 
 pub async fn download(
     url: String,

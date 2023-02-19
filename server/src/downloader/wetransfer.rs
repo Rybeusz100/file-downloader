@@ -7,7 +7,7 @@ use tokio::{
     io::{AsyncWriteExt, BufWriter},
 };
 
-use crate::DownloadResult;
+use crate::models::DownloadResult;
 
 use super::get_file_info;
 
